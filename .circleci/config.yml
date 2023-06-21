@@ -1,12 +1,21 @@
-version: 2
-sudo: required
-services:
-  - docker
+version: 2.1
+executors:
+  default:
+    docker:
+      - image: circleci/node:14
 
-before_install:
-  - docker build -t wfliu66/docker-react -f Dockerfile.dev .
+jobs:
+  build:
+    docker:
+      - image: circleci/node:14
 
-script:
-  - docker run -e CI=true wfliu66/docker-react npm run test
+    steps:
+      - checkout
 
+      - run:
+          name: Build Docker image
+          command: docker build -t wfliu66/docker-react -f Dockerfile.dev .
 
+      - run:
+          name: Run tests
+          command: docker run -e CI=true wfliu66/docker-react npm run test
