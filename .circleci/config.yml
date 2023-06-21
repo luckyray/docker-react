@@ -57,7 +57,7 @@ workflows:
       - build:
           filters:
             branches:
-              ignore: feature
+              only: master
       - deploy:
           requires:
             - build
