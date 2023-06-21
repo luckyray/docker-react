@@ -22,3 +22,23 @@ jobs:
       - run:
           name: Run tests
           command: docker run -e CI=true wfliu66/docker-react npm run test
+
+  deploy:
+    machine:
+      enabled: true
+
+    steps:
+      - install:
+          name: Install AWS CLI
+          command: sudo apt-get install awscli
+
+      - run:
+          name: Deploy to Elastic Beanstalk
+          command: |
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY
+            aws configure set aws_secret_access_key $AWS_SECRET_KEY
+            aws configure set default.region ap-southeast-1
+            aws configure set default.output json
+            aws s3 cp Dockerrun.aws.json s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/Dockerrun.aws.json
+            aws elasticbeanstalk create-application-version --application-name test1 --version-label $CIRCLE_SHA1 --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/Dockerrun.aws.json"
+            aws elasticbeanstalk update-environment --environment-name Test1-env --version-label $CIRCLE_SHA1
