@@ -3,6 +3,9 @@ executors:
   default:
     docker:
       - image: circleci/node:14-browsers
+  python:
+    docker:
+      - image: circleci/python:3.7
 
 jobs:
   build:
@@ -20,35 +23,38 @@ jobs:
           command: docker run -e CI=true wfliu66/docker-react npm run test
 
   deploy:
-    machine:
-      enabled: true
+    executor: python
     steps:
       - checkout
       - run:
           name: Install AWS CLI
-          command: sudo apt-get install awscli
+          command: sudo pip install awscli
       - run:
-          name: Deploy to Elastic Beanstalk
+          name: Package application
           command: |
-            aws configure set aws_access_key_id "$AWS_ACCESS_KEY"
-            aws configure set aws_secret_access_key "$AWS_SECRET_KEY"
+            zip -r application.zip .
+      - run:
+          name: Upload to S3
+          command: |
+            aws configure set aws_access_key_id $AWS_ACCESS_KEY
+            aws configure set aws_secret_access_key $AWS_SECRET_KEY
             aws configure set default.region ap-southeast-1
             aws configure set default.output json
-            aws s3 cp Dockerrun.aws.json s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/Dockerrun.aws.json
-            aws elasticbeanstalk create-application-version --application-name test1 --version-label "$CIRCLE_SHA1" --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/Dockerrun.aws.json"
-            aws elasticbeanstalk update-environment --environment-name Test1-env --version-label "$CIRCLE_SHA1"
+            aws s3 cp application.zip s3://elasticbeanstalk-ap-southeast-1-114704806918/test1/application.zip
+      - run:
+          name: Create application version
+          command: |
+            aws elasticbeanstalk create-application-version --application-name test1 --version-label $CIRCLE_SHA1 --source-bundle S3Bucket="elasticbeanstalk-ap-southeast-1-114704806918",S3Key="test1/application.zip"
+      - run:
+          name: Update environment
+          command: |
+            aws elasticbeanstalk update-environment --environment-name Test1-env --version-label $CIRCLE_SHA1
 
 workflows:
   version: 2
-  build_and_deploy:
+  build-deploy:
     jobs:
-      - build:
-          filters:
-            branches:
-              only: master
+      - build
       - deploy:
           requires:
             - build
-          filters:
-            branches:
-              only: master
