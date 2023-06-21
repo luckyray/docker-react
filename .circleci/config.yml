@@ -1,3 +1,4 @@
+version: 2
 sudo: required
 services:
   - docker
